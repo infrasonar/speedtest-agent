@@ -74,18 +74,22 @@ class CheckSpeedtest(CheckBase):
         if cls.download:
             logging.debug('Testing download speed')
             speedtest.download(threads=(None, 1)[cls.single])
-            item['download'] = results.download / 1_000_000.0
-            logging.debug(f'Download: {item["download"]:.2f} Mbit/s')
+            item['download'] = v = results.download
+
+            logging.debug(f'Download: {(v / 1_000_000.0):.2f} Mbit/s')
         else:
             logging.debug('Skipping download test')
 
         if cls.upload:
             logging.debug('Testing upload speed')
             speedtest.upload(threads=(None, 1)[cls.single])
-            item['upload'] = results.upload / 1_000_000.0
-            logging.debug(f'Upload: {item["upload"]:.2f} Mbit/s')
+            item['upload'] = v = results.upload
+            logging.debug(f'Upload: {(v / 1_000_000.0):.2f} Mbit/s')
         else:
             logging.debug('Skipping upload test')
+
+        item['bytes_received'] = results.bytes_received
+        item['bytes_sent'] = results.bytes_sent
 
         state = {'speedtest': [item]}
         return state
