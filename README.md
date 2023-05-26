@@ -10,7 +10,7 @@ Environment                 | Default                       | Description
 `TOKEN`                     | _required_                    | Token to connect to.
 `ASSET_ID`                  | `/data/.asset.json`           | Asset Id _or_ file where the Agent asset Id is stored _(must be a volume mount)_.
 `API_URI`                   | https://api.infrasonar.com    | InfraSonar API.
-`CHECK_INTERVAL`            | `300`                         | Interval for the speedtest check in seconds.
+`CHECK_INTERVAL`            | `900`                         | Interval for the speedtest check in seconds.
 `NO_DOWNLOAD`               | `0`                           | Do not perform download test _(1 will disable the download test)_.
 `NO_UPLOAD`                 | `0`                           | Do not perform upload test _(1 will disable the upload test)_.
 `SINGLE`                    | `0`                           | Only use a single connection instead of multiple. This simulates a typical file transfer.
