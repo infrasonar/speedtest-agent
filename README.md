@@ -3,6 +3,8 @@
 
 # InfraSonar Speedtest agent
 
+Documentation: https://docs.infrasonar.com/collectors/agents/speedtest/
+
 ## Environment variables
 
 Environment                 | Default                       | Description
