@@ -1,2 +1,2 @@
-pylibagent==0.1.9
+pylibagent==0.2.0
 speedtest-cli==2.1.3
