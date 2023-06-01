@@ -14,7 +14,7 @@ from speedtest import (
 
 class CheckSpeedtest(CheckBase):
     key = 'speedtest'
-    interval = int(os.getenv('CHECK_INTERVAL', '900'))
+    interval = int(os.getenv('CHECK_INTERVAL', '3600'))
 
     download = not bool(int(os.getenv('NO_DOWNLOAD', '0')))
     upload = not bool(int(os.getenv('NO_UPLOAD', '0')))
