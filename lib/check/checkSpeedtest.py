@@ -10,6 +10,7 @@ from speedtest import (
     InvalidServerIDType,
     HTTP_ERRORS,
     NoMatchedServers)
+from ..version import __version__ as version
 
 
 class CheckSpeedtest(CheckBase):
@@ -90,6 +91,8 @@ class CheckSpeedtest(CheckBase):
 
         item['bytes_received'] = results.bytes_received
         item['bytes_sent'] = results.bytes_sent
+
+        item['version'] = version
 
         state = {'speedtest': [item]}
         return state
