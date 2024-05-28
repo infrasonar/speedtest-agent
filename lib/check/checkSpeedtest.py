@@ -1,5 +1,4 @@
 import os
-import asyncio
 import logging
 from typing import Dict, List, Any
 from pylibagent.check import CheckBase
@@ -57,7 +56,7 @@ class CheckSpeedtest(CheckBase):
             raise Exception(f'Cannot retrieve speedtest server list: {msg}')
         except InvalidServerIDType:
             raise Exception(
-                f'Server Id is an invalid server type, must be an int')
+                'Server Id is an invalid server type, must be an int')
 
         logging.debug('Selecting best server based on ping...')
         speedtest.get_best_server()
