@@ -40,7 +40,7 @@ class CheckSpeedtest(CheckBase):
             raise Exception(f'Cannot retrieve speedtest configuration: {msg}')
 
         cl = speedtest.config['client']
-        item = {
+        item: Dict[str, Any] = {
             'name': 'speedtest',
             'from': f'{cl["isp"]} ({cl["ip"]})',
         }
@@ -51,7 +51,7 @@ class CheckSpeedtest(CheckBase):
             speedtest.get_servers()
         except NoMatchedServers:
             raise Exception('No matched servers')
-        except (ServersRetrievalError,) + HTTP_ERRORS:
+        except (ServersRetrievalError,) + HTTP_ERRORS as e:
             msg = str(e) or type(e).__name__
             raise Exception(f'Cannot retrieve speedtest server list: {msg}')
         except InvalidServerIDType:
