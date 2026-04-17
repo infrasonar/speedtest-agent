@@ -1,97 +1,100 @@
 import os
 import logging
+import subprocess
+import json
+import asyncio
+from aiohttp import ClientSession
 from typing import Dict, List, Any
 from pylibagent.check import CheckBase
-from speedtest import (
-    Speedtest,
-    ConfigRetrievalError,
-    ServersRetrievalError,
-    InvalidServerIDType,
-    HTTP_ERRORS,
-    NoMatchedServers)
 from ..version import __version__ as version
+
+
+IPERF3_SVR_URL = 'https://api.infrasonar.com/speedtest'
+CONN_TIMEOUT = 10.0  # connection timeout
+
+
+def run_speedtest(host: str, port: str, duration: int) -> dict[str, Any]:
+    cmd = [
+        'iperf3',
+        '-c', host,
+        '-p', str(port),
+        '-J',
+        '-t', f'{duration}'
+    ]
+
+    try:
+        logging.debug(f'Start Speedtest for {host}:[{port}]...')
+        process = subprocess.run(cmd,
+                                 capture_output=True,
+                                 text=True,
+                                 check=True)
+        logging.debug(f'Done Speedtest for {host}:[{port}]')
+        data = json.loads(process.stdout)
+
+        connected = data['start']['connected'][0]
+        end_recv = data['end']['sum_received']
+        end_send = data['end']['sum_sent']
+        end_stream_sender = data['end']['streams'][0]['sender']
+
+        # take host as name, new item when the host changes seems reasonable
+        item = {
+            'name': host,  # str
+            'duration': duration,  # int
+            'local_host': connected['local_host'],  # str
+            'local_port': connected['local_port'],  # int
+            'remote_host': connected['remote_host'],  # str
+            'remote_port': connected['remote_port'],  # int
+            'bits_per_second_recv': end_recv['bits_per_second'],  # float
+            'bits_per_second_send': end_send['bits_per_second'],  # float
+            'retransmits': end_send.get('retransmits', 0),  # int
+            'max_latency_ms': end_stream_sender['max_rtt'] / 1000,  # float
+            'min_latency_ms': end_stream_sender['min_rtt'] / 1000,  # float
+        }
+        return item
+
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Iperf3 error: {e.stderr}")
 
 
 class CheckSpeedtest(CheckBase):
     key = 'speedtest'
     interval = int(os.getenv('CHECK_INTERVAL', '3600'))
 
-    download = not bool(int(os.getenv('NO_DOWNLOAD', '0')))
-    upload = not bool(int(os.getenv('NO_UPLOAD', '0')))
-    single = bool(int(os.getenv('SINGLE', '0')))
-    source = os.getenv('SOURCE', None)
-    timeout = int(os.getenv('TIMEOUT', '10'))
-    secure = bool(int(os.getenv('SECURE', '0')))
+    perf3_host = os.getenv('IPERF3_HOST', '')
+    perf3_port = os.getenv('IPERF3_PORT', '5200-5209')
+    time_param = int(os.getenv('TIME', '5'))
 
     @classmethod
     async def run(cls) -> Dict[str, List[Dict[str, Any]]]:
         if cls.interval == 0:
             raise Exception(f'{cls.key} is disabled')
 
-        logging.debug('Retrieving speedtest.net configuration...')
-        try:
-            speedtest = Speedtest(
-                source_address=cls.source,
-                timeout=cls.timeout,
-                secure=cls.secure
-            )
-        except (ConfigRetrievalError,) + HTTP_ERRORS as e:
-            msg = str(e) or type(e).__name__
-            raise Exception(f'Cannot retrieve speedtest configuration: {msg}')
+        host = cls.perf3_host
+        port = cls.perf3_port
+        duration = cls.time_param
 
-        cl = speedtest.config['client']
-        item: Dict[str, Any] = {
-            'name': 'speedtest',
-            'from': f'{cl["isp"]} ({cl["ip"]})',
+        if not host:
+            logging.debug('Retrieving speedtest server...')
+            try:
+                async with ClientSession() as session:
+                    async with session.get(url=IPERF3_SVR_URL) as resp:
+                        svr = await resp.json()
+                        host: str = svr['host']
+                        port: str = svr['port']
+                        duration: int = svr.get('time') or cls.time_param
+            except Exception as e:
+                raise Exception(f'Failed to read speedtest server: {str(e)}')
+
+        loop = asyncio.get_running_loop()
+
+        task = loop.run_in_executor(None, run_speedtest, host, port, duration)
+        try:
+            item = await asyncio.wait_for(task, timeout=duration+CONN_TIMEOUT)
+        except asyncio.TimeoutError:
+            raise Exception(f'Timed out: failed to connect to {host} [{port}]')
+
+        state = {
+            'speedtest': [{'name': 'speedtest', 'version': version}],
+            'iperf3': [item]
         }
-
-        logging.debug(f'Testing from {item["from"]}...')
-        logging.debug('Retrieving speedtest.net server list...')
-        try:
-            speedtest.get_servers()
-        except NoMatchedServers:
-            raise Exception('No matched servers')
-        except (ServersRetrievalError,) + HTTP_ERRORS as e:
-            msg = str(e) or type(e).__name__
-            raise Exception(f'Cannot retrieve speedtest server list: {msg}')
-        except InvalidServerIDType:
-            raise Exception(
-                'Server Id is an invalid server type, must be an int')
-
-        logging.debug('Selecting best server based on ping...')
-        speedtest.get_best_server()
-
-        results = speedtest.results
-
-        item['destination'] = destination = \
-            f"{results.server['sponsor']} ({results.server['name']})"
-        item['distance'] = d = results.server['d']
-        item['latency'] = latency = results.server['latency']
-
-        logging.debug(
-            f"Hosted by {destination} [{d:.02f} km]: {latency:.03f} ms")
-
-        if cls.download:
-            logging.debug('Testing download speed')
-            speedtest.download(threads=(None, 1)[cls.single])
-            item['download'] = v = results.download
-
-            logging.debug(f'Download: {(v / 1_000_000.0):.2f} Mbit/s')
-        else:
-            logging.debug('Skipping download test')
-
-        if cls.upload:
-            logging.debug('Testing upload speed')
-            speedtest.upload(threads=(None, 1)[cls.single])
-            item['upload'] = v = results.upload
-            logging.debug(f'Upload: {(v / 1_000_000.0):.2f} Mbit/s')
-        else:
-            logging.debug('Skipping upload test')
-
-        item['bytes_received'] = results.bytes_received
-        item['bytes_sent'] = results.bytes_sent
-
-        item['version'] = version
-
-        state = {'speedtest': [item]}
         return state

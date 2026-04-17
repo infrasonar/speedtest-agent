@@ -10,4 +10,6 @@ if __name__ == '__main__':
     os.environ['ASSET_ID'] = ASSET_ID
 
     checks = [CheckSpeedtest]
-    Agent('speedtest', version).start(checks, asset_kind='Speed')
+    Agent('speedtest', version).start(checks,
+                                      asset_kind='Speed',
+                                      asset_name='speedtest')

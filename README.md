@@ -13,12 +13,9 @@ Environment                 | Default                       | Description
 `ASSET_ID`                  | `/data/.asset.json`           | Asset Id _or_ file where the Agent asset Id is stored _(must be a volume mount)_.
 `API_URI`                   | https://api.infrasonar.com    | InfraSonar API.
 `CHECK_INTERVAL`            | `3600`                        | Interval for the speedtest check in seconds.
-`NO_DOWNLOAD`               | `0`                           | Do not perform download test _(1 will disable the download test)_.
-`NO_UPLOAD`                 | `0`                           | Do not perform upload test _(1 will disable the upload test)_.
-`SINGLE`                    | `0`                           | Only use a single connection instead of multiple. This simulates a typical file transfer.
-`SOURCE`                    | _null_                        | Source IP address to bind to _(not required)_.
-`TIMEOUT`                   | `10`                          | HTTP timeout in seconds.
-`SECURE`                    | `0`                           | Use HTTPS instead of HTTP when communicating with speedtest.net operated servers.
+`IPERF3_HOST`               | _empty_                       | Target IP/Host address for performance testing, for example: `ams.speedtest.clouvider.net`. If not given, the InfraSonar default will be used ([https://api.infrasonar.com/speedtest](https://api.infrasonar.com/speedtest)).
+`IPERF3_PORT`               | _empty_                       | If empty, port `5200-5209` will be used unless specified by InfraSonar.
+`TIME`                      | `5`                           | Time in seconds to transmit for.
 `VERIFY_SSL`                | `1`                           | Verify SSL certificate, 0 _(=disabled)_ or 1 _(=enabled)_.
 `LOG_LEVEL`                 | `warning`                     | Log level _(error, warning, info, debug)_.
 `LOG_COLORIZED`             | `0`                           | Log colorized, 0 _(=disabled)_ or 1 _(=enabled)_.
